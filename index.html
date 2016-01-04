@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Canada Homocides Longitudinal Choropleth</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+
+</head>
+<style>
+
+svg {
+  border-radius: 25px;
+}
+#myMap {
+  
+  margin-left: auto;
+  margin-right: auto;
+  width:800px;
+  height:500px;
+}
+
+#yearSlider {
+
+  display: block;  
+  text-align: center;
+  margin-top:25px;
+  margin-left: auto;
+  margin-right: auto;
+  width:800px;
+
+}
+
+.background {
+  fill: #eee;
+  pointer-events: all;
+}
+
+.regions {
+  cursor: pointer;
+}
+
+.regions.active {
+
+}
+
+.tooltip {
+    background-color: #fff;
+    border: 1px solid #555;
+    border-radius: 8px; 
+    padding: 5px;
+}
+
+path {
+  stroke: #dddddd;
+  stroke-width: 0.8;
+}
+
+path:hover, path.highlighted {
+    fill-opacity: 0.8;  
+}
+
+</style>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/1.6.19/topojson.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<script type="text/javascript" src="http://d3js.org/queue.v1.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+
+<div class = "container">
+  <div class= "text-center">
+    <h3>Canadian Total Homocides per Province/Territory</h3>
+    </br><hr>  <!-- note br & hr inside of container now -->
+    
+  </div>
+  <div id= "myMap"></div>
+</div>
+
+<!-- note br & hr outside of container now -->
+</br><hr>
+
+<div class = "container text-center" >
+          <h4>Year: <span class = "sliderText">2007</span></h4>
+          <input type="range" min="2007" max="2013" step="1" value="2007" id="yearSlider">
+</div>
+
+<script>
+
+// Setting color domains(intervals of values) for our map
+
+  var color_domain = [1, 5, 10, 20, 30,50,75,100,150,200]
+  var ext_color_domain = [0, 1, 5, 10, 20, 30,50,75,100,150,200]
+  var legend_labels = ["0", "1-5", "6-10", "11-20", "21-30", "31-50","51-75","76-100","101-150","150-200",">200"]              
+  
+  var color = d3.scale.linear()
+  .domain(color_domain)
+ // .range(["#f7fcfd", "#e5f5f9", "#ccece6", "#99d8c9", "#66c2a4", "#41ae76","#238b45","#006d2c","#00441b","#003008"]);  greens
+  //.range(["rgb(247,251,255)", "rgb(222,235,247)", "rgb(198,219,239)", "rgb(158,202,225)", "rgb(107,174,214)", "rgb(66,146,198)","rgb(33,113,181)","rgb(8,81,156)","rgb(8,48,107)","rgb(4,18,99)"]);  blues
+  .range (["#fff5f0","#fee0d2","#fcbba1","#fc9272","#fb6a4a","#ef3b2c","#cb181d","#a50f15","#67000d","#55000a"]);  //reds
+
+
+var width = 800,
+    height = 500,
+    active = d3.select(null);
+
+var projection = d3.geo.albers()
+    .scale(529.7143908533221)
+    .center([-96.64103465647952,60.538257788841584]) //projection center
+    .parallels([41.9714969544088,83.1480859363606]) //parallels for conic projection
+    .rotate([96.64103465647952]) //rotation for conic projection
+    .translate([-97.20316630291671+width/4,40.16223755810421]) //translate to center the map in view
+
+var zoom = d3.behavior.zoom()
+    .translate([0, 0])
+    .scale(1)
+    .scaleExtent([1, 8])
+    .on("zoom", zoomed);
+
+var svg = d3.select("#myMap").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .call(zoom).on("dblclick.zoom", null);
+    
+// container
+
+svg.append("rect")
+    .attr("class", "background")
+    .attr("width", width)
+    .attr("height", height);
+
+var g = svg.append("g");
+
+var path = d3.geo.path()
+    .projection(projection);    
+
+var thirteen = d3.map();
+var twelve = d3.map();
+var eleven = d3.map();
+var ten = d3.map();
+var nine = d3.map();
+var eight = d3.map();
+var seven = d3.map();
+
+
+var tooltip = d3.select("body") // change to "rect"
+    .append("div")
+    .style("position", "absolute")
+    .style("z-index", "10")
+    .style("visibility", "hidden")
+    .attr("class", "tooltip")
+    .text("thetooltip");
+
+//Setup Slider and slider events
+
+var sliderValue = 2007;
+var slider = d3.select('input')
+  .on("input", function() {
+      d3.selectAll('.sliderText').text(this.value);
+      
+      var sliderValue = this.value;
+      console.log(sliderValue);
+      //update fill attributes for paths on slider events
+      d3.select('.regions')
+        .selectAll('path')
+          .attr("fill", function(d){
+                switch(parseInt(sliderValue)) {
+                  case 2007:
+                    console.log(d.properties.CODE);
+                    return color(seven.get(d.properties.CODE)); 
+                    break;
+                  case 2008:
+                    console.log(d.properties.CODE);
+                    return color(eight.get(d.properties.CODE));
+                    break;
+                  case 2009:
+                    console.log(d.properties.CODE);
+                    return color(nine.get(d.properties.CODE));
+                    break;
+                  case 2010:
+                    console.log(d.properties.CODE);
+                    return color(ten.get(d.properties.CODE));
+                    break;
+                  case 2011:
+                    console.log(d.properties.CODE);
+                    return color(eleven.get(d.properties.CODE));
+                    break;
+                  case 2012:
+                    console.log(d.properties.CODE);
+                    return color(twelve.get(d.properties.CODE));
+                    break;
+                  case 2013:
+                    console.log(d.properties.CODE);
+                    return color(thirteen.get(d.properties.CODE));
+                    break;
+                }                 
+            });
+ 
+      });
+
+//setup queue
+queue()
+  .defer(d3.json, "./data/canada.topojson")
+  .defer(d3.csv, "./data/homocide.csv", function(d) { 
+    thirteen.set(d.CODE, +d.thirteen);
+    twelve.set(d.CODE, +d.twelve);
+    eleven.set(d.CODE, +d.eleven);
+    ten.set(d.CODE, +d.ten);
+    nine.set(d.CODE, +d.nine);
+    eight.set(d.CODE, +d.eight);
+    seven.set(d.CODE, +d.seven);
+  })
+  .await(ready);
+
+
+//drawing routine inside ready
+function ready(error, map) {
+  if (error) throw error;
+  
+ //draw map 
+var g = svg.append("g")
+        .attr("class","regions")
+        .selectAll("path")
+        .data(topojson.feature(map, map.objects.collection).features)
+        .enter().append("path")
+        .attr("d", path)
+        .attr("fill", function(d){
+                switch(sliderValue) {
+                  //only need this case because this occurs on the initial browser render()
+                  case 2007:
+                    return color(seven.get(d.properties.CODE)); 
+                    break;
+                }                 
+            })
+        .on("click", clicked)
+        .on("mouseover", function(d) {
+                tooltip.style("visibility", "visible");
+
+                switch(sliderValue){
+                  case 2007:
+                    tooltip.html("Name: " + d.properties.NAME + "<br>" + "Year: " + sliderValue + "<br>" + "Homocides: " + seven.get(d.properties.CODE)); 
+                    break;
+                  case 2008:
+                    tooltip.html("Name: " + d.properties.NAME + "<br>" + "Year: " + sliderValue + "<br>" + "Homocides: " + eight.get(d.properties.CODE)); 
+                    break;
+                  case 2009:
+                    tooltip.html("Name: " + d.properties.NAME + "<br>" + "Year: " + sliderValue + "<br>" + "Homocides: " + nine.get(d.properties.CODE)); 
+                    break;
+                  case 2010:
+                    tooltip.html("Name: " + d.properties.NAME + "<br>" + "Year: " + sliderValue + "<br>" + "Homocides: " + ten.get(d.properties.CODE)); 
+                    break;
+                  case 2011:
+                    tooltip.html("Name: " + d.properties.NAME + "<br>" + "Year: " + sliderValue + "<br>" + "Homocides: " + eleven.get(d.properties.CODE)); 
+                    break;
+                  case 2012:
+                    tooltip.html("Name: " + d.properties.NAME + "<br>" + "Year: " + sliderValue + "<br>" + "Homocides: " + twelve.get(d.properties.CODE)); 
+                    break;
+                  case 2013:
+                    tooltip.html("Name: " + d.properties.NAME + "<br>" + "Year: " + sliderValue + "<br>" + "Homocides: " + thirteen.get(d.properties.CODE)); 
+                    break;
+                    }
+
+            })
+        .on("mousemove", function() {
+                return tooltip
+                  .style("top", (d3.event.pageY -10 + "px"))
+                  .style("left", (d3.event.pageX +10 + "px"));
+            })
+        .on("mouseout", function() {
+                return tooltip.style("visibility", "hidden");
+            });
+
+//add legend
+//Adding legend for our Choropleth
+
+  var legend = svg.selectAll("g.legend")
+    .data(ext_color_domain)
+    .enter().append("g")
+    .attr("class", "legend");
+
+  var ls_w = 20, ls_h = 20;
+
+  legend.append("rect")
+    .attr("x", 20)
+    .attr("y", function(d, i){ return height - (i*ls_h) - 2*ls_h;})
+    .attr("width", ls_w)
+    .attr("height", ls_h)
+    .style("fill", function(d, i) { return color(d); })
+    .style("opacity", 1);
+
+  legend.append("text")
+    .attr("x", 50)
+    .attr("y", function(d, i){ return height - (i*ls_h) - ls_h - 4;})
+    .text(function(d, i){ return legend_labels[i]; });
+}
+
+function clicked(d) {
+  if (active.node() === this) return reset();
+  active.classed("active", false);
+  active = d3.select(this).classed("active", true);
+
+  var bounds = path.bounds(d),
+      dx = bounds[1][0] - bounds[0][0],
+      dy = bounds[1][1] - bounds[0][1],
+      x = (bounds[0][0] + bounds[1][0]) / 2,
+      y = (bounds[0][1] + bounds[1][1]) / 2,
+      scale = .9 / Math.max(dx / width, dy / height),
+      translate = [width / 2 - scale * x, height / 2 - scale * y];
+
+  svg.transition()
+      .duration(750)
+      .call(zoom.translate(translate).scale(scale).event);
+            
+}
+
+function zoomed() {
+  svg.selectAll(".regions").style("stroke-width", 1.5 / d3.event.scale + "px");
+  svg.selectAll(".regions").attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+}
+
+function reset() {
+  active.classed("active", false);
+  active = d3.select(null);
+
+  svg.transition()
+      .duration(750)
+      .call(zoom.translate([0, 0]).scale(1).event);
+}
+
+// If the drag behavior prevents the default click,
+// also stop propagation so we don’t click-to-zoom.
+function stopped() {
+  if (d3.event.defaultPrevented) d3.event.stopPropagation();
+}
+
+
+</script>
+</html>
